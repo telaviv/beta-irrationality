@@ -1,0 +1,192 @@
+"""Generate BetaIrrational/I3/Size/PhiNum.lean: certified log values at x0 and Phi(x0), dPhi(x0).
+
+Instance I3: r = 7/6, blocks (k, m) with delta = k/160.
+Usage: python gen_phinum_i3.py PhiNum.lean
+Each log(y) is enclosed via y = 2^a 3^b 5^c z, |1 - z| < 0.015, an 8-term series for log z with the
+geometric remainder, and Mathlib's 10^-10 enclosures of log 2, log 3, log 5. The script re-checks
+every enclosure against mpmath (50 digits) and prints the certified interval bounds for Phi(x0),
+dPhi(x0) that the Lean lemmas (with these exact rational enclosures) imply.
+"""
+from fractions import Fraction as Fr
+from mpmath import mp, mpf, log
+import math, sys
+mp.dps = 50
+
+x0 = Fr(58911, 50000)
+ks = [0, 1, 2, 3, 4, 5, 6, 7, 8] + list(range(10, 47, 2))
+blocks = [(0, 8)] + [(k, 1) for k in ks[1:]]
+assert len(blocks) == 28 and sum(m for _, m in blocks) == 35
+R1, R0 = Fr(13, 6), Fr(7, 6)   # 1 + r, r
+
+# coefficient of F(y) in Phi (and of log y in dPhi) for each argument y
+coef = {}
+def addc(y, c):
+    coef[y] = coef.get(y, 0) + c
+addc(x0 + R1, 3)
+addc(x0 - R0, -3)
+for d, m in blocks:
+    addc(x0 + 1 - Fr(d, 160), -m)
+    addc(x0 + Fr(d, 160), m)
+args = sorted(coef)
+
+L2c, L3c, L5c = Fr(287209, 414355), Fr(109861228867, 10**11), Fr(160943791243, 10**11)
+EPS = Fr(1, 10**10)
+NT = 8  # series terms
+PHI_UB = Fr(-297613, 10000)      # Phi(x0) <= -29.7613
+DPHI_LB = Fr(-2, 1000)           # -0.002 <= dPhi(x0)
+DPHI_UB = Fr(0)                  # dPhi(x0) <= 0
+
+def mlog(q): return log(mpf(q.numerator) / q.denominator)
+
+def best_base(y):
+    ly = float(mlog(y))
+    best = None
+    for a in range(-30, 31):
+        for b in range(-20, 21):
+            for c in range(-14, 15):
+                if abs(a) + abs(b) + abs(c) > 36: continue
+                v = a * math.log(2) + b * math.log(3) + c * math.log(5)
+                dz = abs(ly - v)
+                key = (dz > 0.015, abs(a) + abs(b) + abs(c) if dz <= 0.015 else dz)
+                if best is None or key < best[0]:
+                    best = (key, a, b, c)
+    assert not best[0][0], y
+    return best[1:]
+
+def pw(a, b, c):
+    return Fr(2)**a * Fr(3)**b * Fr(5)**c
+
+def series_bounds(z):
+    x = 1 - z
+    S = sum(x**(i + 1) / (i + 1) for i in range(NT))
+    E = abs(x)**(NT + 1) / (1 - abs(x))
+    return -S - E, -S + E
+
+def rdown(q, D=10**15): return Fr(math.floor(q * D), D)
+def rup(q, D=10**15): return Fr(math.ceil(q * D), D)
+
+def lean_q(q):
+    if q.denominator == 1:
+        return f"({q.numerator} : ℝ)"
+    return f"({q.numerator} / {q.denominator} : ℝ)"
+
+def lean_num(q):
+    if q < 0:
+        return f"(-{(-q).numerator} / {(-q).denominator} : ℝ)" if q.denominator != 1 else f"(-{-q.numerator} : ℝ)"
+    return lean_q(q)
+
+out = []
+enc = {}
+for idx, y in enumerate(args):
+    a, b, c = best_base(y)
+    z = y / pw(a, b, c)
+    zlo, zhi = series_bounds(z)
+    def ib(k, cen): return k * cen - abs(k) * EPS, k * cen + abs(k) * EPS
+    l2 = ib(a, L2c); l3 = ib(b, L3c); l5 = ib(c, L5c)
+    lo = rdown(l2[0] + l3[0] + l5[0] + zlo)
+    hi = rup(l2[1] + l3[1] + l5[1] + zhi)
+    true = mlog(y)
+    assert mpf(lo.numerator) / lo.denominator <= true <= mpf(hi.numerator) / hi.denominator
+    name = f"logc{idx}"
+    enc[y] = (idx, lo, hi)
+    zs = lean_q(z)
+    ap, an = max(a, 0), max(-a, 0)
+    bp, bn = max(b, 0), max(-b, 0)
+    cp, cn = max(c, 0), max(-c, 0)
+    out.append(f"""/-- `log({y})`: base `2^{a} 3^{b} 5^{c}`, `z = {z}`. -/
+lemma {name} : {lean_num(lo)} ≤ Real.log {lean_q(y)} ∧ Real.log {lean_q(y)} ≤ {lean_num(hi)} := by
+  have hz := log_series_bounds {zs} {NT} (by norm_num [abs_lt])
+  norm_num [Finset.sum_range_succ] at hz
+  have hd := log_decomp {lean_q(y)} {zs} {ap} {an} {bp} {bn} {cp} {cn} (by norm_num) (by norm_num) (by norm_num)
+  have h2 := abs_le.mp Real.log_two_near_10
+  have h3 := abs_le.mp Real.log_three_near_10
+  have h5 := abs_le.mp Real.log_five_near_10
+  norm_num at h2 h3 h5 hd
+  constructor <;> linarith [hz.1, hz.2, h2.1, h2.2, h3.1, h3.2, h5.1, h5.2]
+""")
+
+# interval evaluation with the enclosures (what the Lean lemmas imply)
+def side(y, w, upper):
+    """bound for w * log y; upper=True gives an upper bound. Returns (value, which hyp side)."""
+    idx, lo, hi = enc[y]
+    if (w > 0) == upper:
+        return w * hi, f"h{idx}.2"
+    return w * lo, f"h{idx}.1"
+
+def eval_phi(upper):
+    v = Fr(0); hs = []
+    for y, c in coef.items():
+        val, h = side(y, c * y, upper); v += val; hs.append(h)
+    return v, hs
+
+def eval_dphi(upper):
+    v = Fr(0); hs = []
+    for y, c in coef.items():
+        val, h = side(y, Fr(c), upper); v += val; hs.append(h)
+    return v, hs
+
+phi_up, phi_hs = eval_phi(True)
+dphi_up, dup_hs = eval_dphi(True)
+dphi_lo, dlo_hs = eval_dphi(False)
+print("certified Phi(x0) <=", float(phi_up), " (target", float(PHI_UB), ")")
+print("certified dPhi(x0) in [", float(dphi_lo), ",", float(dphi_up), "]")
+assert phi_up <= PHI_UB and dphi_lo >= DPHI_LB and dphi_up <= DPHI_UB
+
+header = f"""/-
+# Certified numerics for the I3 `Φ` at `x₀ = 58911/50000` (generated by `scripts/size/gen_phinum_I3.py`)
+
+Each `logcN` encloses `log y` for one of the {len(args)} arguments `y = x₀ + s` of `Φ(x₀)`, `Φ'(x₀)`.
+Method: `y = 2^a 3^b 5^c z` with `|1 - z| < 0.015`; `log z` from the alternating series
+(`Real.abs_log_sub_add_sum_range_le`, {NT} terms) and `log 2`, `log 3`, `log 5` from Mathlib
+(`Real.log_two_near_10` etc., error `10^-10`). The helper lemmas `log_series_bounds`,
+`log_decomp` are in `Size/Common.lean`.
+
+Results (true values from mpmath):
+* `Phi_x0_le : Φ(x₀) ≤ -29.7613` (true `Φ(x₀) = -29.7613276360…`; the enclosures give
+  `≤ {float(phi_up):.10f}`);
+* `dPhi_x0_ge : -2/1000 ≤ Φ'(x₀)`, `dPhi_x0_le : Φ'(x₀) ≤ 0` (true `Φ'(x₀) = -0.0014802115…`;
+  the enclosures give `[{float(dphi_lo):.10f}, {float(dphi_up):.10f}]`).
+Status: complete (no `sorry`).
+-/
+import BetaIrrational.I3.Size.Phi
+import BetaIrrational.Size.PhiNum
+
+namespace BetaIrr.I3.Size
+
+open Real
+open BetaIrr.Size (F log_series_bounds log_decomp)
+
+"""
+
+def lean_frac(q):
+    s = "-" if q < 0 else ""
+    q = abs(q)
+    return f"{s}{q.numerator} / {q.denominator}" if q.denominator != 1 else f"{s}{q.numerator}"
+
+with open(sys.argv[1], 'w', encoding='utf-8', newline='\n') as f:
+    f.write(header)
+    f.write("\n".join(out))
+    hs = "\n".join(f"  have h{i} := logc{i}" for i in range(len(args)))
+    f.write(f"""
+/-- `Φ(x₀) ≤ -29.7613` at `x₀ = 58911/50000` (true value `-29.7613276360…`). -/
+lemma Phi_x0_le : Phi (58911 / 50000) ≤ {lean_frac(PHI_UB)} := by
+{hs}
+  simp only [Phi, F, blocks, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil]
+  norm_num
+  linarith [{", ".join(phi_hs)}]
+
+/-- `Φ'(x₀) ≥ -2/1000` (true value `-0.0014802115…`). -/
+lemma dPhi_x0_ge : {lean_frac(DPHI_LB)} ≤ dPhi (58911 / 50000) := by
+{hs}
+  simp only [dPhi, blocks, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil]
+  norm_num
+  linarith [{", ".join(dlo_hs)}]
+
+/-- `Φ'(x₀) ≤ 0` (true value `-0.0014802115…`). -/
+lemma dPhi_x0_le : dPhi (58911 / 50000) ≤ 0 := by
+{hs}
+  simp only [dPhi, blocks, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil]
+  norm_num
+  linarith [{", ".join(dup_hs)}]
+""")
+    f.write("\nend BetaIrr.I3.Size\n")

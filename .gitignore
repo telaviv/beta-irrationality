@@ -1,0 +1,6 @@
+/.lake
+# intermediate #eval output of the A-certificate generator (regenerable, untrusted)
+/scripts/certA/gen_*.txt
+__pycache__/
+# paper draft (not yet published)
+/paper/

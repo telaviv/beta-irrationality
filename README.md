@@ -87,7 +87,7 @@ You need [elan](https://github.com/leanprover/elan). The toolchain (Lean v4.35.0
 
 ```sh
 lake exe cache get          # download prebuilt Mathlib
-lake build                  # about an hour on a desktop; the A-certificate dominates
+lake build                  # over an hour on a desktop with 16+ GB RAM; the A-certificate dominates
 lake env lean Axioms.lean   # print the axioms of the main theorem and its ingredients
 ```
 
@@ -121,7 +121,9 @@ References such as "PROOF_BETA §5" point to the sections of the informal write-
 
 - The Lean kernel has checked the proof. **No human expert has yet reviewed the mathematics or the Lean code.** The
   statement definitions (see TRUST.md) are short and worth reading.
-- The proof and the formalisation were developed with substantial AI assistance (Claude, Anthropic).
+- The construction, the proofs, the parameter search, the certificate programs and the Lean formalisation were produced
+  largely by AI models (Claude, Anthropic), working under the direction of the author. Apart from the Lean kernel
+  check, all verification so far has been done by AI systems.
 - The numerical margin is thin: Q ≈ −0.07. It is certified, not estimated.
 
 ## Acknowledgements

@@ -88,13 +88,15 @@ noncomputable def R (m : ℕ) (t : ℝ) : ℝ :=
 /-- The linear form `L_n = Σ_{t ≥ 0} (-1)^t R_n''(t)`. -/
 noncomputable def L (m : ℕ) : ℝ := ∑' t : ℕ, (-1 : ℝ) ^ t * deriv (deriv (R m)) t
 
-/-- The upper bound of the exact A certificate (PROOF_BETA §9, I3: X = 400, 62,965 events). -/
+/-- The upper bound of the exact A certificate
+(PROOF_BETA §9: X = 400; 62,132 event points, 62,131 intervals). -/
 def Acert : ℚ := 12507029707866288048422972493354331 / 790300921079786767495600904601600
 
 /-- The real-axis size constant: `max_{x ≥ r} Φ(x) ≤ Vcert`. -/
 def Vcert : ℚ := -2976 / 100
 
-/-- The not-yet-formalised inputs, stated for the concrete `R_n`, `L_n` above. -/
+/-- The inputs of the assembly (PROOF_BETA Lemmas 3–6), stated for the concrete `R_n`, `L_n` above;
+built in `I3/Glue/Main.lean`. -/
 structure Hyp where
   /-- Lemma 3: `L_n ∈ ℚ + ℚ β(4) + … + ℚ β(36)`. -/
   ρ : ℕ → ℚ

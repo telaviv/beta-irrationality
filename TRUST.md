@@ -9,8 +9,13 @@
 ```
 
 These are Lean's three standard axioms, the same ones Mathlib uses. The project contains no `sorry`, no `axiom`
-declaration and no `native_decide`, so nothing relies on the compiler. Every numerical certificate is evaluated by the
-kernel with `decide +kernel`.
+declaration and no `native_decide`, so nothing relies on the compiler.
+- The A-certificate and the saddle-point certificate are decidable statements about rational data, proved by
+  `decide +kernel`.
+- The 58 logarithm enclosures of the real-axis bound (`I3/Size/PhiNum.lean`) are proved by `norm_num` from Mathlib's
+  series bounds for `log`.
+
+Every proof is checked by the kernel.
 
 One caveat. Two helper functions in the A-certificate code (`gAcc`, `gAccF`) carry `@[implemented_by …]` attributes.
 These affect compiled code only, i.e. the `#eval` generator scripts. The kernel never uses them, and they add no axiom.
@@ -34,7 +39,7 @@ kernel, so a wrong value makes the build fail; it cannot make a false theorem tr
 
 | data | Lean files | generator |
 |---|---|---|
-| A-certificate (62,131 events, 1,995 chunks) | `I3/CertAK/EvData.lean`, `EvWin*.lean`, `EvSorted.lean`, `EvSum*.lean`, `CertCompute.lean` | `scripts/certA/GenCertA_I3.lean` (`#eval`) + `scripts/certA/gen_certA_files.py` |
+| A-certificate (62,132 event points, 62,131 intervals, 1,995 chunks) | `I3/CertAK/EvData.lean`, `EvWin*.lean`, `EvSorted.lean`, `EvSum*.lean`, `CertCompute.lean` | `scripts/certA/GenCertA_I3.lean` (`#eval`) + `scripts/certA/gen_certA_files.py` |
 | Φ enclosures on the real axis | `I3/Size/PhiNum.lean` | `scripts/size/gen_phinum_I3.py` |
 | steepest-descent polyline, saddle boxes | `I3/Interval/PolyDataI3.lean`, `SaddleI3.lean`, `UpChunk*.lean`, … | ad hoc Python (RK4 trace + simplification), not included |
 
@@ -69,7 +74,7 @@ These are not needed for correctness, but they agree:
 
 ## Cost
 
-- A cold `lake build` takes about an hour on a desktop with 16+ GB of RAM. The A-certificate dominates:
+- A cold `lake build` takes more than an hour on a desktop with 16+ GB of RAM. The A-certificate dominates:
   - about 2.6 CPU-hours of chunk sums plus about 1 CPU-hour of window checks;
-  - run as three parallel import chains, with about 2–2.5 GB per process.
+  - run as three parallel import chains, with up to about 4 GB resident per process.
 - The interval certificate takes about 30 CPU-minutes.

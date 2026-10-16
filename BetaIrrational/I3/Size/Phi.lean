@@ -7,7 +7,7 @@ with `r = 7/6` and the I3 pole blocks `δ_j = k_j/160`, multiplicities `m_j` (`I
 Here: definitions of `Φ`, `Φ'`, `Φ''`, derivative lemmas, and the qualitative shape:
 * `Φ'' ≤ 0` on `(7/6, 4/3]` (`d2Phi_nonpos`, three sub-intervals with monotone bounds);
 * `Φ' ≤ 0` on `[4/3, 3]` (`dPhi_nonpos_of_le`) and `Φ'(x) ≤ -4/x` on `[3, ∞)` (`dPhi_le_tail`).
-(Numerically `Φ'' ≤ 0` on `(7/6, 1.5566]`, and `x Φ'(x) ∈ [-17.9, -14.7]` on `[3, ∞)`.)
+(Numerically `Φ'' ≤ 0` on `(7/6, 1.5556]`, and `x Φ'(x) ∈ [-17.9, -14.7]` on `[3, ∞)`.)
 
 The generic facts about `F` and list sums are in `Size/Common.lean`.
 Status: complete (no `sorry`).

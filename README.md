@@ -34,8 +34,9 @@ only one instance in this repository.
 - Zudilin (2019): one of β(2), …, β(12);
 - Lai–Zhou (arXiv:2103.00904): one of β(2), …, β(10).
 
-So "one of β(2), …, β(10) is irrational" would be satisfied by G alone, if G is irrational, and would say nothing about
-the higher values. The theorem here never mentions β(2): its linear forms do not involve β(2) at all.
+So "one of β(2), …, β(10) is irrational" would be satisfied by G alone if G is irrational, which an OpenAI preprint
+("Catalan's constant is irrational", released 6 October 2026, with a Lean proof; unrefereed) claims, and it would then
+say nothing about the higher values. The theorem here never mentions β(2): its linear forms do not involve β(2) at all.
 
 We have not found an explicit result of this form in the literature. Our search covered the web and arXiv, but not
 MathSciNet or zbMATH. Qualitatively, a statement "one of β(4), …, β(N)" for some computable N follows from Rivoal–Zudilin's
